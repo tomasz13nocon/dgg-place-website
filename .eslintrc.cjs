@@ -9,7 +9,8 @@ module.exports = {
 	parser: '@typescript-eslint/parser',
 	plugins: ['@typescript-eslint'],
 	rules: {
-		'prefer-const': 'off'
+		'prefer-const': 'off',
+		'@typescript-eslint/no-non-null-assertion': 'off'
 	},
 	parserOptions: {
 		sourceType: 'module',

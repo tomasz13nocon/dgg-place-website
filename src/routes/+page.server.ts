@@ -1,9 +1,10 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
-// import fs from 'fs/promises';
-// import PNG from 'pngjs';
 import sharp from 'sharp';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { BUCKET, s3 } from '$lib/s3';
 
+/** Returns sharp object as raw data */
 async function convertImage(inputImage: File) {
 	const inputBuffer = await inputImage.arrayBuffer();
 
@@ -30,30 +31,92 @@ async function convertImage(inputImage: File) {
 		}
 	}
 
-	await sharp(Uint8Array.from(destData), {
+	return sharp(Uint8Array.from(destData), {
 		raw: { width: destWidth, height: destHeight, channels: 4 }
-	}).toFile('out.png');
+	});
 }
 
+const genHex = (size: number) =>
+	[...Array(size)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+
 export const actions = {
-	default: async ({ request }) => {
+	convert: async ({ request }) => {
 		const data = await request.formData();
-		const name = data.get('name');
 		const image = data.get('image');
 
 		if (!(image instanceof File)) {
-			return fail(400, { error: 'image is required and must be a file' });
+			return fail(400, { error: 'required fields missing or wrong type' });
 		}
+
+		let result;
 		try {
-			await convertImage(image);
+			result = await convertImage(image);
+			result = await result.png().toBuffer();
 		} catch (e) {
-			return fail(400, { error: 'Error processing image' });
+			console.log(e);
+			return fail(400, { error: 'Error converting image' });
 		}
 
-		if (!name) {
-			// return fail(400, { error: 'name is required' });
+		const filename = `${genHex(20)}.png`;
+		try {
+			await s3.send(
+				new PutObjectCommand({
+					Bucket: BUCKET,
+					Key: `conversions/${filename}`,
+					Body: result,
+					ContentType: 'image/png'
+				})
+			);
+		} catch (e) {
+			console.log(e);
+			return fail(400, { error: 'Error uploading image' });
 		}
 
-		return { success: true, name };
+		return {
+			conversionSuccess: true,
+			imageUrl: `https://${BUCKET}.s3.amazonaws.com/conversions/${filename}`
+		};
+	},
+
+	submit: async ({ request }) => {
+		const data = await request.formData();
+		const name = data.get('name');
+		const image = data.get('image');
+		const x = data.get('x');
+		const y = data.get('y');
+
+		if (
+			!name ||
+			!image ||
+			!x ||
+			!y ||
+			typeof name !== 'string' ||
+			isNaN(+x) ||
+			isNaN(+y) ||
+			!(image instanceof File)
+		) {
+			return fail(400, { error: 'required fields missing or wrong type' });
+		}
+
+		if (name.includes('_')) {
+			return fail(400, { error: 'name cannot contain underscore' });
+		}
+
+		const filename = `${x}_${y}_${name}_${genHex(12)}.png`;
+		try {
+			await s3.send(
+				new PutObjectCommand({
+					Bucket: BUCKET,
+					Key: filename,
+					Body: await image.arrayBuffer(),
+					ContentType: 'image/png'
+				})
+			);
+		} catch (e) {
+			console.log(e);
+			return fail(400, { error: 'Error uploading image' });
+		}
+
+		return { submissionSuccess: true, name };
 	}
 } satisfies Actions;

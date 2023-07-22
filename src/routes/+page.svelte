@@ -72,11 +72,11 @@
 	</form>
 
 	{#if form?.conversionSuccess}
-		<p class="success">
-			<!-- svelte-ignore a11y-missing-attribute -->
-			Image: <img src={form.imageUrl} />
+		<p class="success conversion-success">
+			Converted image:
 			<br />
-			Link: <a href={form.imageUrl}>{form.imageUrl}</a>
+			<!-- svelte-ignore a11y-missing-attribute -->
+			<img class="converted-img" src={form.imageUrl} />
 		</p>
 	{:else if form?.submissionSuccess}
 		<p class="success">
@@ -107,5 +107,12 @@
 	.preview-img {
 		max-height: 300px;
 		margin-bottom: 1rem;
+	}
+	.converted-img {
+		border: 1px solid #0c0;
+		margin-top: 1rem;
+	}
+	.conversion-success {
+		text-align: center;
 	}
 </style>

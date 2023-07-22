@@ -47,12 +47,14 @@ export const actions = {
 		const mergeImage = data.get('mergeImage');
 		const x = data.get('x');
 		const y = data.get('y');
+		console.log(mergeImage);
 
 		if (
 			!(image instanceof File) ||
 			image.type !== 'image/png' ||
 			(merge && (!x || !y || isNaN(+x) || isNaN(+y))) ||
-			(mergeImage && (!(mergeImage instanceof File) || mergeImage.type !== 'image/png'))
+			(mergeImage &&
+				(!(mergeImage instanceof File) || (mergeImage.size > 0 && mergeImage.type !== 'image/png')))
 		) {
 			return fail(400, { error: 'required fields missing or wrong type' });
 		}
@@ -67,10 +69,11 @@ export const actions = {
 
 			if (merge) {
 				const templateFile =
-					(mergeImage as File) ||
-					(await fetch(
-						'https://raw.githubusercontent.com/destinygg/dgg-place/master/dgg-place-template-1.png'
-					));
+					(mergeImage as File).size > 0
+						? (mergeImage as File)
+						: await fetch(
+							'https://raw.githubusercontent.com/destinygg/dgg-place/master/dgg-place-template-1.png'
+						);
 				const template = await templateFile.arrayBuffer();
 				let merged = await sharp(template)
 					.composite([{ input: result, left: (+x! + 1000) * 3, top: (+y! + 500) * 3 }])

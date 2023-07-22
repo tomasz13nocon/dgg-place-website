@@ -4,71 +4,76 @@
 
 	export let form: ActionData;
 
-	let submitting = false;
 	let converting = false;
-	let imageSrc: any = null;
+	let showPositionFields = false;
+	let imageSrc: string | undefined;
 
 	function onFileChange(e: Event) {
-		let image = e.target.files[0];
+		let image = (e.target as HTMLInputElement)!.files![0];
 		let reader = new FileReader();
 		reader.readAsDataURL(image);
 		reader.onload = (e) => {
-			imageSrc = e.target.result;
+			imageSrc = e.target!.result as string;
 		};
 	}
-
-	$: console.log(form);
 </script>
 
 <main class="container">
 	<hgroup>
 		<h1>Pixel art converter for the Daliban's r/place crusade</h1>
-		<h2>Your image will be converted to a format usable by the script.</h2>
+		<h2>
+			Converts image to the format ready for inclusion as a template in the script. Can also
+			automatically merge with the existing template or a custom one provided by you.
+		</h2>
 	</hgroup>
 	<form
 		method="POST"
 		use:enhance={() => {
-			submitting = true;
+			converting = true;
 			return async ({ update }) => {
-				submitting = false;
+				converting = false;
 				update();
 			};
 		}}
 	>
-		Must be a PNG Image, transparent pixels will be ignored, make sure to only use colors availible
-		on r/place
+		Must be a PNG Image, transparent pixels will be ignored
 		<input
 			type="file"
 			accept="image/png"
 			name="image"
 			on:change={onFileChange}
 			class="file-input"
+			required
 		/>
 		{#if imageSrc}
 			<!-- svelte-ignore a11y-missing-attribute -->
 			<img src={imageSrc} class="preview-img" />
 		{/if}
-		<!-- <label> -->
-		<!-- 	Name of your artwork -->
-		<!-- 	<input type="text" name="name" /> -->
-		<!-- </label> -->
-		<!-- Position of the top left pixel of your artwork on r/place -->
-		<!-- <div class="grid"> -->
-		<!-- 	<label> -->
-		<!-- 		X -->
-		<!-- 		<input type="number" name="x" min="-500" max="999" /> -->
-		<!-- 	</label> -->
-		<!-- 	<label> -->
-		<!-- 		Y -->
-		<!-- 		<input type="number" name="y" min="-500" max="499" /> -->
-		<!-- 	</label> -->
-		<!-- </div> -->
-		<button type="submit" formaction="?/convert" aria-busy={converting} class:secondary={converting}
-			>Convert</button
+		<label class="merge-label">
+			<input type="checkbox" name="merge" bind:checked={showPositionFields} />
+			Merge with existing template
+		</label>
+		{#if showPositionFields}
+			<span> Position of the top left pixel of your artwork on r/place </span>
+			<div class="grid">
+				<label>
+					X
+					<input type="number" name="x" min="-1000" max="999" required />
+				</label>
+				<label>
+					Y
+					<input type="number" name="y" min="-500" max="499" required />
+				</label>
+			</div>
+		{/if}
+		<button
+			type="submit"
+			formaction="?/convert"
+			aria-busy={converting}
+			class:secondary={converting}
 		>
-		<!-- <button type="submit" formaction="?/submit" aria-busy={submitting} class:secondary={submitting} -->
-		<!-- 	>Submit</button -->
-		<!-- > -->
+			Convert
+		</button>
 	</form>
 
 	{#if form?.conversionSuccess}
@@ -77,11 +82,13 @@
 			<br />
 			<!-- svelte-ignore a11y-missing-attribute -->
 			<img class="converted-img" src={form.imageUrl} />
-		</p>
-	{:else if form?.submissionSuccess}
-		<p class="success">
-			"{form.name}" submitted successfully.<br />Once Destiny accepts it, it will show up on r/place
-			with the script.
+			{#if form.templateUrl}
+				<br />
+				Template:
+				<br />
+				<!-- svelte-ignore a11y-missing-attribute -->
+				<img class="converted-img" src={form.templateUrl} />
+			{/if}
 		</p>
 	{:else if form?.error}
 		<p class="error">{form.error}</p>
@@ -95,9 +102,7 @@
 		border-radius: 0.25rem;
 	}
 	.success {
-		/* color: black; */
-		/* background-color: #efe; */
-		border: 1px solid #0c0;
+		/* border: 1px solid #0c0; */
 	}
 	.error {
 		color: black;
@@ -114,5 +119,8 @@
 	}
 	.conversion-success {
 		text-align: center;
+	}
+	.merge-label {
+		margin-bottom: 1rem;
 	}
 </style>

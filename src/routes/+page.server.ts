@@ -9,7 +9,7 @@ async function convertImage(inputImage: File) {
 	const inputBuffer = await inputImage.arrayBuffer();
 
 	const { width, height } = await sharp(inputBuffer).metadata();
-	const { data, info } = await sharp(inputBuffer).raw().toBuffer({ resolveWithObject: true });
+	const { data } = await sharp(inputBuffer).raw().toBuffer({ resolveWithObject: true });
 
 	if (width === undefined || height === undefined) {
 		throw new Error('Image width or height is undefined');
@@ -43,22 +43,47 @@ export const actions = {
 	convert: async ({ request }) => {
 		const data = await request.formData();
 		const image = data.get('image');
+		const merge = data.get('merge');
+		const mergeImage = data.get('mergeImage');
+		const x = data.get('x');
+		const y = data.get('y');
 
-		if (!(image instanceof File)) {
+		if (
+			!(image instanceof File) ||
+			image.type !== 'image/png' ||
+			(merge && (!x || !y || isNaN(+x) || isNaN(+y)))
+		) {
 			return fail(400, { error: 'required fields missing or wrong type' });
 		}
+		// TODO validate image res not exceeding bottom right
 
+		const filename = `${image.name}-${genHex(16)}.png`;
 		let result;
 		try {
 			result = await convertImage(image);
 			result = await result.png().toBuffer();
-		} catch (e) {
-			console.log(e);
-			return fail(400, { error: 'Error converting image' });
-		}
 
-		const filename = `${genHex(20)}.png`;
-		try {
+			if (merge) {
+				console.log('merging');
+				const templateUrl =
+					'https://raw.githubusercontent.com/destinygg/dgg-place/master/dgg-place-template-1.png' ||
+					mergeImage;
+				const template = await (await fetch(templateUrl)).arrayBuffer();
+				let merged = await sharp(template)
+					.composite([{ input: result, left: (+x! + 1000) * 3, top: (+y! + 500) * 3 }])
+					.png()
+					.toBuffer();
+
+				await s3.send(
+					new PutObjectCommand({
+						Bucket: BUCKET,
+						Key: `conversions/template_${filename}`,
+						Body: merged,
+						ContentType: 'image/png'
+					})
+				);
+			}
+
 			await s3.send(
 				new PutObjectCommand({
 					Bucket: BUCKET,
@@ -69,54 +94,44 @@ export const actions = {
 			);
 		} catch (e) {
 			console.log(e);
-			return fail(400, { error: 'Error uploading image' });
+			return fail(400, { error: 'Error converting image' });
 		}
 
 		return {
 			conversionSuccess: true,
-			imageUrl: `https://${BUCKET}.s3.amazonaws.com/conversions/${filename}`
+			imageUrl: `https://${BUCKET}.s3.amazonaws.com/conversions/${filename}`,
+			templateUrl: merge
+				? `https://${BUCKET}.s3.amazonaws.com/conversions/template_${filename}`
+				: undefined
 		};
-	},
-
-	submit: async ({ request }) => {
-		const data = await request.formData();
-		const name = data.get('name');
-		const image = data.get('image');
-		const x = data.get('x');
-		const y = data.get('y');
-
-		if (
-			!name ||
-			!image ||
-			!x ||
-			!y ||
-			typeof name !== 'string' ||
-			isNaN(+x) ||
-			isNaN(+y) ||
-			!(image instanceof File)
-		) {
-			return fail(400, { error: 'required fields missing or wrong type' });
-		}
-
-		if (name.includes('_')) {
-			return fail(400, { error: 'name cannot contain underscore' });
-		}
-
-		const filename = `${x}_${y}_${name}_${genHex(12)}.png`;
-		try {
-			await s3.send(
-				new PutObjectCommand({
-					Bucket: BUCKET,
-					Key: filename,
-					Body: await image.arrayBuffer(),
-					ContentType: 'image/png'
-				})
-			);
-		} catch (e) {
-			console.log(e);
-			return fail(400, { error: 'Error uploading image' });
-		}
-
-		return { submissionSuccess: true, name };
 	}
+
+	// submit: async ({ request }) => {
+	// 	const data = await request.formData();
+	// 	const image = data.get('image');
+	// 	const x = data.get('x');
+	// 	const y = data.get('y');
+	//
+	// 	if (!image || !(image instanceof File)) {
+	// 		return fail(400, { error: 'required fields missing or wrong type' });
+	// 	}
+	//
+	// 	// const filename = `${x}_${y}_${name}_${genHex(12)}.png`;
+	// 	const filename = `${genHex(16)}.png`;
+	// 	try {
+	// 		await s3.send(
+	// 			new PutObjectCommand({
+	// 				Bucket: BUCKET,
+	// 				Key: filename,
+	// 				Body: await image.arrayBuffer(),
+	// 				ContentType: 'image/png'
+	// 			})
+	// 		);
+	// 	} catch (e) {
+	// 		console.log(e);
+	// 		return fail(400, { error: 'Error uploading image' });
+	// 	}
+	//
+	// 	return { submissionSuccess: true, name };
+	// }
 } satisfies Actions;

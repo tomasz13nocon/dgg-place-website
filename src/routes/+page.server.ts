@@ -51,24 +51,27 @@ export const actions = {
 		if (
 			!(image instanceof File) ||
 			image.type !== 'image/png' ||
-			(merge && (!x || !y || isNaN(+x) || isNaN(+y)))
+			(merge && (!x || !y || isNaN(+x) || isNaN(+y))) ||
+			(mergeImage && (!(mergeImage instanceof File) || mergeImage.type !== 'image/png'))
 		) {
 			return fail(400, { error: 'required fields missing or wrong type' });
 		}
 		// TODO validate image res not exceeding bottom right
 
-		const filename = `${image.name}-${genHex(16)}.png`;
+		const filename = `${image.name.endsWith('.png') ? image.name.slice(0, -4) : image.name
+			}-${genHex(12)}.png`;
 		let result;
 		try {
 			result = await convertImage(image);
 			result = await result.png().toBuffer();
 
 			if (merge) {
-				console.log('merging');
-				const templateUrl =
-					'https://raw.githubusercontent.com/destinygg/dgg-place/master/dgg-place-template-1.png' ||
-					mergeImage;
-				const template = await (await fetch(templateUrl)).arrayBuffer();
+				const templateFile =
+					(mergeImage as File) ||
+					(await fetch(
+						'https://raw.githubusercontent.com/destinygg/dgg-place/master/dgg-place-template-1.png'
+					));
+				const template = await templateFile.arrayBuffer();
 				let merged = await sharp(template)
 					.composite([{ input: result, left: (+x! + 1000) * 3, top: (+y! + 500) * 3 }])
 					.png()

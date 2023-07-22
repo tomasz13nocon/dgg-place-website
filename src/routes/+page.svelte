@@ -26,12 +26,26 @@
 			automatically merge with the existing template or a custom one provided by you.
 		</h2>
 	</hgroup>
+
+	<div class="example-container">
+		<img src="/dgg-logo-medium.png" alt="conversion preview" />
+		<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 16 16"
+			><path
+				fill="currentColor"
+				d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018a.751.751 0 0 1-.018-1.042l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z"
+			/></svg
+		>
+		<img src="/dgg-logo-converted.png" alt="conversion preview" />
+	</div>
+
 	<form
 		method="POST"
 		use:enhance={() => {
 			converting = true;
 			return async ({ update }) => {
 				converting = false;
+				imageSrc = undefined;
+				showPositionFields = false;
 				update();
 			};
 		}}
@@ -65,6 +79,8 @@
 					<input type="number" name="y" min="-500" max="499" required />
 				</label>
 			</div>
+			Template image to merge your image with (optional, uses existing template if not provided)
+			<input type="file" accept="image/png" name="mergeImage" class="file-input" />
 		{/if}
 		<button
 			type="submit"
@@ -101,9 +117,6 @@
 		padding: 1rem;
 		border-radius: 0.25rem;
 	}
-	.success {
-		/* border: 1px solid #0c0; */
-	}
 	.error {
 		color: black;
 		background-color: #fcc;
@@ -122,5 +135,9 @@
 	}
 	.merge-label {
 		margin-bottom: 1rem;
+	}
+	.example-container {
+		text-align: center;
+		margin-bottom: 2rem;
 	}
 </style>

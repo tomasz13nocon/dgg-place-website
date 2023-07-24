@@ -2,7 +2,7 @@ import { fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import sharp from 'sharp';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
-import { BUCKET, s3 } from '$lib/s3';
+import { BUCKET, BUCKET_URL, s3 } from '$lib/s3';
 
 /** Returns sharp object as raw data */
 async function convertImage(inputImage: File) {
@@ -52,31 +52,30 @@ export const actions = {
 		if (
 			!(image instanceof File) ||
 			image.type !== 'image/png' ||
-			(merge && (!x || !y || isNaN(+x) || isNaN(+y))) ||
-			(mergeImage &&
-				(!(mergeImage instanceof File) || (mergeImage.size > 0 && mergeImage.type !== 'image/png')))
+			(merge &&
+				(!x ||
+					!y ||
+					isNaN(+x) ||
+					isNaN(+y) ||
+					!(mergeImage instanceof File) ||
+					mergeImage.type !== 'image/png'))
 		) {
 			return fail(400, { error: 'required fields missing or wrong type' });
 		}
 		// TODO validate image res not exceeding bottom right
 
-		const filename = `${image.name.endsWith('.png') ? image.name.slice(0, -4) : image.name
-			}-${genHex(12)}.png`;
+		const filename = `${
+			image.name.endsWith('.png') ? image.name.slice(0, -4) : image.name
+		}-${genHex(12)}.png`;
 		let result;
 		try {
 			result = await convertImage(image);
 			result = await result.png().toBuffer();
 
 			if (merge) {
-				const templateFile =
-					(mergeImage as File).size > 0
-						? (mergeImage as File)
-						: await fetch(
-							'https://raw.githubusercontent.com/destinygg/dgg-place/master/dgg-place-template-1.png'
-						);
-				const template = await templateFile.arrayBuffer();
+				const template = await (mergeImage as File).arrayBuffer();
 				let merged = await sharp(template)
-					.composite([{ input: result, left: (+x! + 1000) * 3, top: (+y! + 500) * 3 }])
+					.composite([{ input: result, left: +x! * 3, top: +y! * 3 }])
 					.png()
 					.toBuffer();
 
@@ -105,10 +104,8 @@ export const actions = {
 
 		return {
 			conversionSuccess: true,
-			imageUrl: `https://${BUCKET}.s3.amazonaws.com/conversions/${filename}`,
-			templateUrl: merge
-				? `https://${BUCKET}.s3.amazonaws.com/conversions/template_${filename}`
-				: undefined
+			imageUrl: `${BUCKET_URL}/conversions/${filename}`,
+			templateUrl: merge ? `${BUCKET_URL}/conversions/template_${filename}` : undefined
 		};
 	}
 

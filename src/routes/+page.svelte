@@ -20,10 +20,10 @@
 
 <main class="container">
 	<hgroup>
-		<h1>Pixel art converter for the Daliban's r/place crusade</h1>
+		<h1>Pixel art converter for r/place</h1>
 		<h2>
 			Converts image to the format ready for inclusion as a template in the script. Can also
-			automatically merge with the existing template or a custom one provided by you.
+			automatically merge with a provided template.
 		</h2>
 	</hgroup>
 
@@ -68,19 +68,25 @@
 			Merge with existing template
 		</label>
 		{#if showPositionFields}
-			<span> Position of the top left pixel of your artwork on r/place </span>
+			<span>
+				Position of the top left pixel of your artwork on the provided template (not the r/place
+				coordinates!).
+				<br />
+				For example if r/place top left coordinates are -500, -500 and you want to place your art at
+				-400, -400 the coordinates should be 100, 100.</span
+			>
 			<div class="grid">
 				<label>
 					X
-					<input type="number" name="x" min="-1000" max="999" required />
+					<input type="number" name="x" required />
 				</label>
 				<label>
 					Y
-					<input type="number" name="y" min="-500" max="499" required />
+					<input type="number" name="y" required />
 				</label>
 			</div>
-			Template image to merge your image with (optional, uses existing template if not provided)
-			<input type="file" accept="image/png" name="mergeImage" class="file-input" />
+			Template image to merge your image with
+			<input type="file" accept="image/png" name="mergeImage" class="file-input" required />
 		{/if}
 		<button
 			type="submit"

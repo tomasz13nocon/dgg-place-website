@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import sharp from 'sharp';
+import fs from 'fs/promises';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { BUCKET, BUCKET_URL, s3 } from '$lib/s3';
 
@@ -79,24 +80,10 @@ export const actions = {
 					.png()
 					.toBuffer();
 
-				await s3.send(
-					new PutObjectCommand({
-						Bucket: BUCKET,
-						Key: `conversions/template_${filename}`,
-						Body: merged,
-						ContentType: 'image/png'
-					})
-				);
+				await fs.writeFile(`./static/conversions/template_${filename}`, merged);
 			}
 
-			await s3.send(
-				new PutObjectCommand({
-					Bucket: BUCKET,
-					Key: `conversions/${filename}`,
-					Body: result,
-					ContentType: 'image/png'
-				})
-			);
+			await fs.writeFile(`./static/conversions/${filename}`, result);
 		} catch (e) {
 			console.log(e);
 			return fail(400, { error: 'Error converting image' });
@@ -104,8 +91,8 @@ export const actions = {
 
 		return {
 			conversionSuccess: true,
-			imageUrl: `${BUCKET_URL}/conversions/${filename}`,
-			templateUrl: merge ? `${BUCKET_URL}/conversions/template_${filename}` : undefined
+			imageUrl: `/conversions/${filename}`,
+			templateUrl: merge ? `/conversions/template_${filename}` : undefined
 		};
 	}
 

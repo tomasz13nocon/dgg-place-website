@@ -1,6 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
-import sharp from 'sharp';
+import jimp from 'jimp';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { BUCKET, BUCKET_URL, s3 } from '$lib/s3';
 
@@ -8,8 +8,8 @@ import { BUCKET, BUCKET_URL, s3 } from '$lib/s3';
 async function convertImage(inputImage: File) {
 	const inputBuffer = await inputImage.arrayBuffer();
 
-	const { width, height } = await sharp(inputBuffer).metadata();
-	const { data } = await sharp(inputBuffer).raw().toBuffer({ resolveWithObject: true });
+	const image = await jimp.read(Buffer.from(inputBuffer));
+	const { width, height, data } = image.bitmap;
 
 	if (width === undefined || height === undefined) {
 		throw new Error('Image width or height is undefined');
@@ -31,9 +31,17 @@ async function convertImage(inputImage: File) {
 		}
 	}
 
-	return sharp(Uint8Array.from(destData), {
-		raw: { width: destWidth, height: destHeight, channels: 4 }
-	});
+	return new Promise(
+		(res, rej) =>
+			new jimp(
+				{ data: Buffer.from(destData), width: destWidth, height: destHeight },
+				(err, image) => {
+					// console.log(err, image);
+					if (err) rej(err);
+					else res(image.getBufferAsync(jimp.MIME_PNG));
+				}
+			)
+	);
 }
 
 const genHex = (size: number) =>
@@ -47,7 +55,6 @@ export const actions = {
 		const mergeImage = data.get('mergeImage');
 		const x = data.get('x');
 		const y = data.get('y');
-		console.log(mergeImage);
 
 		if (
 			!(image instanceof File) ||
@@ -70,24 +77,23 @@ export const actions = {
 		let result;
 		try {
 			result = await convertImage(image);
-			result = await result.png().toBuffer();
 
-			if (merge) {
-				const template = await (mergeImage as File).arrayBuffer();
-				let merged = await sharp(template)
-					.composite([{ input: result, left: +x! * 3, top: +y! * 3 }])
-					.png()
-					.toBuffer();
-
-				await s3.send(
-					new PutObjectCommand({
-						Bucket: BUCKET,
-						Key: `conversions/template_${filename}`,
-						Body: merged,
-						ContentType: 'image/png'
-					})
-				);
-			}
+			// if (merge) {
+			// 	const template = await (mergeImage as File).arrayBuffer();
+			// 	let merged = await sharp(template)
+			// 		.composite([{ input: result, left: +x! * 3, top: +y! * 3 }])
+			// 		.png()
+			// 		.toBuffer();
+			//
+			// 	await s3.send(
+			// 		new PutObjectCommand({
+			// 			Bucket: BUCKET,
+			// 			Key: `conversions/template_${filename}`,
+			// 			Body: merged,
+			// 			ContentType: 'image/png'
+			// 		})
+			// 	);
+			// }
 
 			await s3.send(
 				new PutObjectCommand({

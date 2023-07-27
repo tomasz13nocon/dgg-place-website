@@ -72,7 +72,7 @@ export const actions = {
 			result = await convertImage(image);
 			result = await result.png().toBuffer();
 
-			await fs.mkdir('./conversions', { recursive: true });
+			// await fs.mkdir('./static/conversions', { recursive: true });
 
 			if (merge) {
 				const template = await (mergeImage as File).arrayBuffer();
@@ -81,10 +81,10 @@ export const actions = {
 					.png()
 					.toBuffer();
 
-				await fs.writeFile(`./conversions/template_${filename}`, merged);
+				await fs.writeFile(`./static/conversions/template_${filename}`, merged);
 			}
 
-			await fs.writeFile(`./conversions/${filename}`, result);
+			await fs.writeFile(`./static/conversions/${filename}`, result);
 		} catch (e) {
 			console.log(e);
 			return fail(400, { error: 'Error converting image' });

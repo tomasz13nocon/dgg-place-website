@@ -73,8 +73,10 @@
 				coordinates!).
 				<br />
 				For example if r/place top left coordinates are -500, -500 and you want to place your art at
-				-400, -400 the position should be 100, 100.</span
-			>
+				-400, -400 the position should be 100, 100.
+				<br />
+				Coordinates start from 0, so the top left pixel is 0, 0.
+			</span>
 			<div class="grid">
 				<label>
 					X

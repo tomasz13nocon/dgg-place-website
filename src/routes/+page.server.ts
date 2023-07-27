@@ -2,8 +2,8 @@ import { fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import sharp from 'sharp';
 import fs from 'fs/promises';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
-import { BUCKET, BUCKET_URL, s3 } from '$lib/s3';
+// import { PutObjectCommand } from '@aws-sdk/client-s3';
+// import { BUCKET, BUCKET_URL, s3 } from '$lib/s3';
 
 /** Returns sharp object as raw data */
 async function convertImage(inputImage: File) {
